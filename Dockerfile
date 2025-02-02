@@ -25,14 +25,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files first to leverage Docker cache
-COPY composer.json composer.lock ./
+# Copy existing application directory
+COPY . .
 
 # Install dependencies
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
-
-# Copy existing application directory
-COPY . .
 
 # Create cache directory and set permissions
 RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
