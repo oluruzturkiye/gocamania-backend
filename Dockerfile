@@ -1,4 +1,4 @@
-FROM php:8.1-fpm
+FROM php:8.1-cli
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -38,8 +38,8 @@ RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoload
 # Generate application key
 RUN php artisan key:generate --force
 
-# Expose port 9000
-EXPOSE 9000
+# Expose port 8000
+EXPOSE 8000
 
-# Start PHP-FPM
-CMD ["php-fpm"]
+# Start Laravel's built-in server
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
