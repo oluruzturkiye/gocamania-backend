@@ -29,6 +29,9 @@ COPY . /app/
 RUN mkdir -p /app/bootstrap/cache && chmod -R 777 /app/bootstrap/cache
 RUN mkdir -p /app/storage && chmod -R 777 /app/storage
 
+# Copy .env.example to .env
+RUN cp .env.example .env
+
 # Install dependencies
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
 
