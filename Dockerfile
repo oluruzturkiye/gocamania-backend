@@ -25,18 +25,21 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy existing application directory
-COPY . /var/www/html/
-
-# Create cache directory and set permissions
-RUN mkdir -p /var/www/html/bootstrap/cache && chmod -R 777 /var/www/html/bootstrap/cache
-RUN mkdir -p /var/www/html/storage && chmod -R 777 /var/www/html/storage
-
-# Copy .env.example to .env
-RUN cp .env.example .env
+# Copy composer files first to leverage Docker cache
+COPY composer.json composer.lock ./
 
 # Install dependencies
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
+
+# Copy existing application directory
+COPY . .
+
+# Create cache directory and set permissions
+RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
+RUN chmod -R 777 storage bootstrap/cache
+
+# Copy .env.example to .env
+RUN cp .env.example .env
 
 # Generate application key
 RUN php artisan key:generate --force
@@ -44,8 +47,10 @@ RUN php artisan key:generate --force
 # Change ownership of our applications
 RUN chown -R www-data:www-data /var/www/html
 
-# Copy apache vhost file
-COPY docker/000-default.conf /etc/apache2/sites-available/000-default.conf
+# Configure Apache DocumentRoot
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 EXPOSE 80
 
