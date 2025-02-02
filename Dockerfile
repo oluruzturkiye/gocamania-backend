@@ -41,6 +41,9 @@ RUN cp .env.example .env
 # Generate application key
 RUN php artisan key:generate --force
 
+# Run migrations
+RUN php artisan migrate --force
+
 # Change ownership of our applications
 RUN chown -R www-data:www-data /var/www/html
 
