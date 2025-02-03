@@ -39,7 +39,7 @@ COPY . .
 RUN echo "APP_NAME=Laravel\n\
 APP_ENV=production\n\
 APP_KEY=\n\
-APP_DEBUG=false\n\
+APP_DEBUG=true\n\
 APP_URL=http://localhost\n\
 LOG_CHANNEL=stack\n\
 LOG_DEPRECATIONS_CHANNEL=null\n\
@@ -91,8 +91,11 @@ ENV APACHE_LOG_DIR /var/log/apache2
 # Set ServerName to suppress FQDN warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# Enable Apache modules and configure PHP
+RUN a2enmod rewrite headers
+RUN sed -i 's/display_errors = Off/display_errors = On/' /usr/local/etc/php/php.ini-production
+RUN sed -i 's/log_errors = Off/log_errors = On/' /usr/local/etc/php/php.ini-production
+RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini
 
 # Create Apache virtual host configuration with detailed error logging
 RUN echo '<VirtualHost *:80>\n\
@@ -102,9 +105,10 @@ RUN echo '<VirtualHost *:80>\n\
     CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
     LogLevel debug\n\
     <Directory /var/www/html/public>\n\
-        Options Indexes FollowSymLinks\n\
+        Options Indexes FollowSymLinks MultiViews\n\
         AllowOverride All\n\
         Require all granted\n\
+        DirectoryIndex index.php\n\
     </Directory>\n\
     php_flag display_errors on\n\
     php_flag display_startup_errors on\n\
@@ -121,6 +125,12 @@ RUN echo $'<IfModule mod_rewrite.c>\n\
     RewriteCond %{REQUEST_FILENAME} !-f\n\
     RewriteRule ^ index.php [L]\n\
 </IfModule>' > /var/www/html/public/.htaccess
+
+# Final setup and permissions
+RUN chown -R www-data:www-data /var/www/html/storage
+RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage
+RUN chmod -R 775 /var/www/html/bootstrap/cache
 
 EXPOSE 80
 
