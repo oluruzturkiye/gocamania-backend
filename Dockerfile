@@ -41,8 +41,8 @@ RUN cp .env.example .env
 # Generate application key
 RUN php artisan key:generate --force
 
-# Run migrations
-RUN php artisan migrate --force
+# Run migrations (only if database is available)
+RUN if [ -n "$MYSQLHOST" ]; then php artisan migrate --force; fi
 
 # Change ownership of our applications
 RUN chown -R www-data:www-data /var/www/html
