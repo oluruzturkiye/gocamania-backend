@@ -78,13 +78,13 @@ RUN echo '<VirtualHost *:80>\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
 # Create .htaccess file
-RUN echo '<IfModule mod_rewrite.c>\n\
+RUN printf '<IfModule mod_rewrite.c>\n\
     <IfModule mod_negotiation.c>\n\
         Options -MultiViews -Indexes\n\
     </IfModule>\n\
     RewriteEngine On\n\
-    RewriteCond %{REQUEST_FILENAME} !-d\n\
-    RewriteCond %{REQUEST_FILENAME} !-f\n\
+    RewriteCond %%{REQUEST_FILENAME} !-d\n\
+    RewriteCond %%{REQUEST_FILENAME} !-f\n\
     RewriteRule ^ index.php [L]\n\
 </IfModule>' > /var/www/html/public/.htaccess
 
