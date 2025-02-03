@@ -29,15 +29,17 @@ COPY . .
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
 
 # Prepare Laravel directories and permissions
-RUN mkdir -p /var/www/html/storage/framework/{sessions,views,cache} \
-    && mkdir -p /var/www/html/storage/logs \
+RUN mkdir -p storage/framework/{sessions,views,cache} \
+    && mkdir -p storage/logs \
+    && mkdir -p storage/app/public \
+    && mkdir -p public/storage \
+    && ln -s ../storage/app/public public/storage \
     && chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html \
-    && chmod -R 777 /var/www/html/storage \
-    && chmod -R 777 /var/www/html/bootstrap/cache
-
-# Create symbolic link for storage
-RUN php artisan storage:link || true
+    && find /var/www/html -type f -exec chmod 644 {} \; \
+    && find /var/www/html -type d -exec chmod 755 {} \; \
+    && chmod -R 777 storage \
+    && chmod -R 777 bootstrap/cache \
+    && chmod -R 777 public/storage
 
 # Configure Apache
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
