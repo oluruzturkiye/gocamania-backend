@@ -28,18 +28,48 @@ COPY . .
 # Install dependencies
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
+# Prepare Laravel directories and permissions
+RUN mkdir -p /var/www/html/storage/framework/{sessions,views,cache} \
+    && mkdir -p /var/www/html/storage/logs \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html \
     && chmod -R 777 /var/www/html/storage \
     && chmod -R 777 /var/www/html/bootstrap/cache
+
+# Create symbolic link for storage
+RUN php artisan storage:link || true
 
 # Configure Apache
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 ENV APACHE_LOG_DIR /var/log/apache2
 
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# Configure Apache virtual host with detailed error logging
+RUN echo '<VirtualHost *:80>\n\
+    ServerName localhost\n\
+    DocumentRoot ${APACHE_DOCUMENT_ROOT}\n\
+    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
+    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
+    LogLevel debug\n\
+\n\
+    <Directory ${APACHE_DOCUMENT_ROOT}>\n\
+        Options Indexes FollowSymLinks\n\
+        AllowOverride All\n\
+        Require all granted\n\
+        DirectoryIndex index.php\n\
+\n\
+        <IfModule mod_rewrite.c>\n\
+            RewriteEngine On\n\
+            RewriteCond %{REQUEST_FILENAME} !-d\n\
+            RewriteCond %{REQUEST_FILENAME} !-f\n\
+            RewriteRule ^ index.php [L]\n\
+        </IfModule>\n\
+    </Directory>\n\
+\n\
+    php_flag display_errors on\n\
+    php_flag log_errors on\n\
+    php_value error_reporting E_ALL\n\
+    php_value error_log /var/log/apache2/php_errors.log\n\
+</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
 # Enable Apache modules
 RUN a2enmod rewrite headers
@@ -54,24 +84,6 @@ RUN sed -i \
     -e 's/display_errors = Off/display_errors = On/g' \
     -e 's/log_errors = Off/log_errors = On/g' \
     "$PHP_INI_DIR/php.ini"
-
-# Configure Apache virtual host with detailed error logging
-RUN echo '<VirtualHost *:80>\n\
-    DocumentRoot ${APACHE_DOCUMENT_ROOT}\n\
-    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
-    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
-    LogLevel debug\n\
-\n\
-    <Directory ${APACHE_DOCUMENT_ROOT}>\n\
-        Options Indexes FollowSymLinks\n\
-        AllowOverride All\n\
-        Require all granted\n\
-    </Directory>\n\
-\n\
-    php_flag display_errors on\n\
-    php_flag log_errors on\n\
-    php_value error_log /var/log/apache2/php_errors.log\n\
-</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
 # Create log directory and set permissions
 RUN mkdir -p ${APACHE_LOG_DIR} \
