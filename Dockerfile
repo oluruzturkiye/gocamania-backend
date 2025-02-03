@@ -89,58 +89,61 @@ ENV APACHE_LOG_DIR /var/log/apache2
 # Set ServerName to suppress FQDN warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
-# Enable Apache modules and configure PHP
+# Enable Apache modules
 RUN a2enmod rewrite headers
 
-# Configure PHP for development
-COPY docker/php.ini /usr/local/etc/php/conf.d/app.ini
-
-# Create PHP configuration
-RUN echo "display_errors=On\n\
-error_reporting=E_ALL\n\
-log_errors=On\n\
-error_log=/var/log/php_errors.log\n\
-memory_limit=256M\n\
-upload_max_filesize=64M\n\
-post_max_size=64M\n\
-max_execution_time=300" > /usr/local/etc/php/conf.d/app.ini
-
-# Create Apache virtual host configuration with detailed error logging
+# Create Apache virtual host configuration
 RUN echo '<VirtualHost *:80>\n\
-    ServerAdmin webmaster@localhost\n\
     DocumentRoot /var/www/html/public\n\
+    DirectoryIndex index.php\n\
     ErrorLog ${APACHE_LOG_DIR}/error.log\n\
     CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
     LogLevel debug\n\
+\n\
     <Directory /var/www/html/public>\n\
         Options Indexes FollowSymLinks MultiViews\n\
         AllowOverride All\n\
         Require all granted\n\
-        DirectoryIndex index.php\n\
+        Order allow,deny\n\
+        Allow from all\n\
+\n\
+        RewriteEngine On\n\
+        RewriteCond %{REQUEST_FILENAME} !-d\n\
+        RewriteCond %{REQUEST_FILENAME} !-f\n\
+        RewriteRule ^ index.php [L]\n\
+\n\
+        SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1\n\
     </Directory>\n\
+\n\
+    <FilesMatch ".php$">\n\
+        SetHandler application/x-httpd-php\n\
+    </FilesMatch>\n\
+\n\
     php_flag display_errors on\n\
     php_flag display_startup_errors on\n\
     php_value error_reporting E_ALL\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
-# Create .htaccess file
-RUN echo $'<IfModule mod_rewrite.c>\n\
-    <IfModule mod_negotiation.c>\n\
-        Options -MultiViews -Indexes\n\
-    </IfModule>\n\
-    RewriteEngine On\n\
-    RewriteCond %{REQUEST_FILENAME} !-d\n\
-    RewriteCond %{REQUEST_FILENAME} !-f\n\
-    RewriteRule ^ index.php [L]\n\
-</IfModule>' > /var/www/html/public/.htaccess
+# Ensure the Apache logs directory exists and is writable
+RUN mkdir -p ${APACHE_LOG_DIR} \
+    && chown -R www-data:www-data ${APACHE_LOG_DIR} \
+    && chmod -R 755 ${APACHE_LOG_DIR}
 
-# Final setup and permissions
-RUN chown -R www-data:www-data /var/www/html/storage
-RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
-RUN chmod -R 775 /var/www/html/storage
-RUN chmod -R 775 /var/www/html/bootstrap/cache
+# Create a PHP info file for testing
+RUN echo "<?php phpinfo(); ?>" > /var/www/html/public/info.php
+
+# Final permissions setup
+RUN chown -R www-data:www-data /var/www/html \
+    && find /var/www/html -type f -exec chmod 644 {} \; \
+    && find /var/www/html -type d -exec chmod 755 {} \; \
+    && chmod -R 777 /var/www/html/storage \
+    && chmod -R 777 /var/www/html/bootstrap/cache
+
+# Start Apache with debug output and log tailing
+CMD (touch /var/log/apache2/error.log /var/log/apache2/access.log /var/log/php_errors.log \
+    && chown www-data:www-data /var/log/apache2/error.log /var/log/apache2/access.log /var/log/php_errors.log \
+    && chmod 644 /var/log/apache2/error.log /var/log/apache2/access.log /var/log/php_errors.log \
+    && tail -f /var/log/apache2/error.log /var/log/apache2/access.log /var/log/php_errors.log & \
+    apache2-foreground)
 
 EXPOSE 80
-
-# Start Apache with debug output and tail the error log
-CMD (tail -f /var/log/apache2/error.log & tail -f /var/log/php_errors.log & apache2-foreground)
