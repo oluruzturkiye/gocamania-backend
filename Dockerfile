@@ -36,37 +36,32 @@ WORKDIR /var/www/html
 COPY . .
 
 # Create .env file with necessary configurations
-RUN echo "APP_NAME=Laravel\n\
+RUN echo "APP_NAME=Gocamania\n\
 APP_ENV=production\n\
-APP_KEY=\n\
 APP_DEBUG=true\n\
-APP_URL=http://localhost\n\
+APP_URL=https://web-production-cef5.up.railway.app\n\
+ASSET_URL=https://web-production-cef5.up.railway.app\n\
 LOG_CHANNEL=stack\n\
 LOG_DEPRECATIONS_CHANNEL=null\n\
 LOG_LEVEL=debug\n\
 DB_CONNECTION=mysql\n\
-DB_HOST=${DB_HOST}\n\
-DB_PORT=${DB_PORT}\n\
-DB_DATABASE=${DB_DATABASE}\n\
-DB_USERNAME=${DB_USERNAME}\n\
-DB_PASSWORD=${DB_PASSWORD}\n\
+DB_HOST=mysql.railway.internal\n\
+DB_PORT=3306\n\
+DB_DATABASE=railway\n\
+DB_USERNAME=root\n\
+DB_PASSWORD=QIGLpzPSotrZfzZFIYIOtVTndRQMWkHw\n\
 BROADCAST_DRIVER=log\n\
 CACHE_DRIVER=file\n\
-FILESYSTEM_DISK=local\n\
+FILESYSTEM_DISK=public\n\
 QUEUE_CONNECTION=sync\n\
 SESSION_DRIVER=file\n\
-SESSION_LIFETIME=120" > .env
+SESSION_LIFETIME=120\n\
+GOOGLE_CLIENT_ID=1059420104982-4hofs7q0htsglsr684ovuq87e2lcuc8s.apps.googleusercontent.com\n\
+GOOGLE_CLIENT_SECRET=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\n\
+GOOGLE_REDIRECT_URI=https://web-production-cef5.up.railway.app/auth/google/callback" > .env
 
 # Install dependencies
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
-
-# Create necessary directories and set permissions
-RUN mkdir -p storage/framework/cache \
-    storage/framework/sessions \
-    storage/framework/views \
-    storage/logs \
-    bootstrap/cache \
-    resources/views
 
 # Set correct permissions
 RUN chown -R www-data:www-data /var/www/html
@@ -74,12 +69,15 @@ RUN chmod -R 755 /var/www/html
 RUN chmod -R 777 /var/www/html/storage
 RUN chmod -R 777 /var/www/html/bootstrap/cache
 
-# Generate application key
+# Generate application key and store it
 RUN php artisan key:generate --force
 
 # Cache configuration and routes for better performance
 RUN php artisan config:cache
 RUN php artisan route:cache
+
+# Create storage link
+RUN php artisan storage:link
 
 # Run migrations (only if database is available)
 RUN if [ -n "$DB_HOST" ]; then php artisan migrate --force; fi
