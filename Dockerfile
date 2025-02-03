@@ -25,22 +25,6 @@ WORKDIR /var/www/html
 # Copy existing application directory
 COPY . .
 
-# Create .env file
-RUN cp .env.example .env \
-    && echo "APP_KEY=${APP_KEY}\n\
-APP_NAME=Gocamania\n\
-APP_ENV=production\n\
-APP_DEBUG=true\n\
-APP_URL=https://web-production-cef5.up.railway.app\n\
-LOG_CHANNEL=stack\n\
-LOG_LEVEL=debug\n\
-DB_CONNECTION=mysql\n\
-DB_HOST=mysql.railway.internal\n\
-DB_PORT=3306\n\
-DB_DATABASE=railway\n\
-DB_USERNAME=root\n\
-DB_PASSWORD=QIGLpzPSotrZfzZFIYIOtVTndRQMWkHw" > .env
-
 # Install dependencies
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
 
@@ -112,11 +96,13 @@ RUN mkdir -p ${APACHE_LOG_DIR} \
     && chown -R www-data:www-data ${APACHE_LOG_DIR} \
     && chmod -R 755 ${APACHE_LOG_DIR}
 
-# Clear Laravel cache
+# Clear Laravel cache and optimize
 RUN php artisan config:clear \
     && php artisan cache:clear \
     && php artisan view:clear \
-    && php artisan route:clear
+    && php artisan route:clear \
+    && php artisan optimize:clear \
+    && php artisan optimize
 
 # Run database migrations
 RUN php artisan migrate --force || true
