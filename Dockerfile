@@ -60,9 +60,13 @@ SESSION_LIFETIME=120" > .env
 # Install dependencies
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
 
-# Create cache directory and set permissions
-RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
-RUN chmod -R 777 storage bootstrap/cache
+# Create necessary directories and set permissions
+RUN mkdir -p storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache \
+    resources/views
 
 # Set correct permissions
 RUN chown -R www-data:www-data /var/www/html
@@ -76,7 +80,6 @@ RUN php artisan key:generate --force
 # Cache configuration and routes for better performance
 RUN php artisan config:cache
 RUN php artisan route:cache
-RUN php artisan view:cache
 
 # Run migrations (only if database is available)
 RUN if [ -n "$DB_HOST" ]; then php artisan migrate --force; fi
