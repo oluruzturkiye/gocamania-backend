@@ -1,4 +1,4 @@
-FROM php:8.2-apache
+FROM php:8.1-apache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -24,6 +24,22 @@ WORKDIR /var/www/html
 
 # Copy existing application directory
 COPY . .
+
+# Create .env file
+RUN cp .env.example .env \
+    && echo "APP_KEY=${APP_KEY}\n\
+APP_NAME=Gocamania\n\
+APP_ENV=production\n\
+APP_DEBUG=true\n\
+APP_URL=https://web-production-cef5.up.railway.app\n\
+LOG_CHANNEL=stack\n\
+LOG_LEVEL=debug\n\
+DB_CONNECTION=mysql\n\
+DB_HOST=mysql.railway.internal\n\
+DB_PORT=3306\n\
+DB_DATABASE=railway\n\
+DB_USERNAME=root\n\
+DB_PASSWORD=QIGLpzPSotrZfzZFIYIOtVTndRQMWkHw" > .env
 
 # Install dependencies
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
@@ -96,11 +112,11 @@ RUN mkdir -p ${APACHE_LOG_DIR} \
     && chown -R www-data:www-data ${APACHE_LOG_DIR} \
     && chmod -R 755 ${APACHE_LOG_DIR}
 
-# Create a test PHP file
-RUN echo "<?php\n\
-error_reporting(E_ALL);\n\
-ini_set('display_errors', 1);\n\
-phpinfo();" > ${APACHE_DOCUMENT_ROOT}/info.php
+# Clear Laravel cache
+RUN php artisan config:clear \
+    && php artisan cache:clear \
+    && php artisan view:clear \
+    && php artisan route:clear
 
 # Run database migrations
 RUN php artisan migrate --force || true
