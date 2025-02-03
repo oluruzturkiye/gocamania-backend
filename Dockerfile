@@ -93,9 +93,19 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # Enable Apache modules and configure PHP
 RUN a2enmod rewrite headers
-RUN sed -i 's/display_errors = Off/display_errors = On/' /usr/local/etc/php/php.ini-production
-RUN sed -i 's/log_errors = Off/log_errors = On/' /usr/local/etc/php/php.ini-production
-RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini
+
+# Configure PHP for development
+COPY docker/php.ini /usr/local/etc/php/conf.d/app.ini
+
+# Create PHP configuration
+RUN echo "display_errors=On\n\
+error_reporting=E_ALL\n\
+log_errors=On\n\
+error_log=/var/log/php_errors.log\n\
+memory_limit=256M\n\
+upload_max_filesize=64M\n\
+post_max_size=64M\n\
+max_execution_time=300" > /usr/local/etc/php/conf.d/app.ini
 
 # Create Apache virtual host configuration with detailed error logging
 RUN echo '<VirtualHost *:80>\n\
