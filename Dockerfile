@@ -35,6 +35,28 @@ WORKDIR /var/www/html
 # Copy existing application directory
 COPY . .
 
+# Create .env file with necessary configurations
+RUN echo "APP_NAME=Laravel\n\
+APP_ENV=production\n\
+APP_KEY=\n\
+APP_DEBUG=false\n\
+APP_URL=http://localhost\n\
+LOG_CHANNEL=stack\n\
+LOG_DEPRECATIONS_CHANNEL=null\n\
+LOG_LEVEL=debug\n\
+DB_CONNECTION=mysql\n\
+DB_HOST=${DB_HOST}\n\
+DB_PORT=${DB_PORT}\n\
+DB_DATABASE=${DB_DATABASE}\n\
+DB_USERNAME=${DB_USERNAME}\n\
+DB_PASSWORD=${DB_PASSWORD}\n\
+BROADCAST_DRIVER=log\n\
+CACHE_DRIVER=file\n\
+FILESYSTEM_DISK=local\n\
+QUEUE_CONNECTION=sync\n\
+SESSION_DRIVER=file\n\
+SESSION_LIFETIME=120" > .env
+
 # Install dependencies
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
 
@@ -42,17 +64,22 @@ RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoload
 RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
 RUN chmod -R 777 storage bootstrap/cache
 
-# Copy .env.example to .env
-RUN cp .env.example .env
+# Set correct permissions
+RUN chown -R www-data:www-data /var/www/html
+RUN chmod -R 755 /var/www/html
+RUN chmod -R 777 /var/www/html/storage
+RUN chmod -R 777 /var/www/html/bootstrap/cache
 
 # Generate application key
 RUN php artisan key:generate --force
 
+# Cache configuration and routes for better performance
+RUN php artisan config:cache
+RUN php artisan route:cache
+RUN php artisan view:cache
+
 # Run migrations (only if database is available)
 RUN if [ -n "$DB_HOST" ]; then php artisan migrate --force; fi
-
-# Change ownership of our applications
-RUN chown -R www-data:www-data /var/www/html
 
 # Configure Apache DocumentRoot and error logging
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
