@@ -43,6 +43,9 @@ RUN php artisan storage:link || true
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 ENV APACHE_LOG_DIR /var/log/apache2
 
+# Set ServerName globally
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
 # Configure Apache virtual host with detailed error logging
 RUN echo '<VirtualHost *:80>\n\
     ServerName localhost\n\
@@ -98,6 +101,9 @@ RUN echo "<?php\n\
 error_reporting(E_ALL);\n\
 ini_set('display_errors', 1);\n\
 phpinfo();" > ${APACHE_DOCUMENT_ROOT}/info.php
+
+# Run database migrations
+RUN php artisan migrate --force || true
 
 # Start Apache in foreground with debug output
 CMD ["apache2-foreground"]
