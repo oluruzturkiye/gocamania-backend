@@ -144,5 +144,5 @@ RUN chmod -R 775 /var/www/html/bootstrap/cache
 
 EXPOSE 80
 
-# Start Apache with debug output
-CMD ["apache2-foreground"]
+# Start Apache with debug output and tail the error log
+CMD (tail -f /var/log/apache2/error.log & tail -f /var/log/php_errors.log & apache2-foreground)
